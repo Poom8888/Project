@@ -1,0 +1,5 @@
+name: Worker Safety Monitor
+icon: 🦺
+description: ตรวจจับการล้มของพนักงานด้วย Modulino Movement แจ้งเตือนด้วย Buzzer แสดงผลบน Dashboard แบบ real-time และบันทึกลง SQLite ทุก 5 นาที
+bricks:
+  - arduino:web_ui

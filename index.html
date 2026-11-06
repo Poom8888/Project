@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Worker Safety Monitor</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+
+<body data-state="no-signal">
+<div class="app">
+
+  <header class="topbar">
+
+    <h1 class="job-name">
+      ระบบตรวจจับการล้มของพนักงาน
+      <small>Worker Safety Monitor</small>
+    </h1>
+    <div class="topbar-right">
+      <div class="topbar-line">
+        <span>IP <b id="host-ip">-</b></span>
+        <span>การเชื่อมต่อ <i id="conn-box" class="conn-box" data-level="off"></i> <b id="conn-text">-</b></span>
+      </div>
+      <time id="clock" class="clock">-</time>
+    </div>
+  </header>
+
+  <section class="panel p-figure">
+    <div class="panel-head alert-head">
+      <small>แจ้งเตือนล้มหรืออุบัติเหตุ</small>
+      <strong id="alert-text">กำลังเชื่อมต่อ…</strong>
+    </div>
+    <div class="stage">
+      <canvas id="figure-canvas"></canvas>
+      <p id="pose-readout" class="stage-readout">-</p>
+      <p class="stage-hint">ลากเพื่อหมุนมุมมอง · ดับเบิลคลิกเพื่อรีเซ็ต</p>
+    </div>
+  </section>
+
+  <section class="panel p-sensor">
+    <div class="panel-head">
+      <small>แจ้งเตือน</small>
+      <button id="ack-button" class="ack" disabled>กดรับทราบ</button>
+    </div>
+    <div class="panel-body sensor-body">
+      <h2 class="section-title">ค่า Sensor</h2>
+
+      <div class="tiles">
+        <div class="tile"><span class="tile-label">ความเร่งรวม</span><b id="m-g">-</b><em>g</em></div>
+        <div class="tile"><span class="tile-label">มุมเอียงลำตัว</span><b id="m-tilt">-</b><em>°</em></div>
+        <div class="tile"><span class="tile-label">เอียงหน้า (+) / หลัง (−)</span><b id="m-forward">-</b><em>°</em></div>
+        <div class="tile"><span class="tile-label">เอียงขวา (+) / ซ้าย (−)</span><b id="m-side">-</b><em>°</em></div>
+      </div>
+
+      <div class="raw">
+        <span>X <b id="raw-x">-</b></span>
+        <span>Y <b id="raw-y">-</b></span>
+        <span>Z <b id="raw-z">-</b></span>
+        <span class="raw-unit">g</span>
+        <span id="axis-hint" class="axis-hint">รอข้อมูล…</span>
+        <button id="recalibrate" class="link-button" hidden>ตั้งท่ายืนใหม่</button>
+      </div>
+
+      <div class="chart-box">
+        <svg class="chart" viewBox="0 0 149 50" preserveAspectRatio="none" aria-label="กราฟแรงกระแทก">
+          <line id="chart-limit" x1="0" x2="149" y1="25" y2="25"></line>
+          <polyline id="chart-line" points=""></polyline>
+        </svg>
+        <p class="chart-caption">แรงสูงสุดย้อนหลัง 30 วินาที (เส้นประ = เกณฑ์แรงกระแทก)</p>
+      </div>
+
+      <div class="presets-box">
+        <span class="tile-label">ความไวในการตรวจจับ</span>
+        <div class="segmented presets">
+          <button data-preset="low">ต่ำ</button>
+          <button data-preset="normal">ปกติ</button>
+          <button data-preset="high">สูง</button>
+        </div>
+        <p class="chart-caption">บันทึกลงฐานข้อมูลรอบถัดไปใน <b id="next-log">-</b> วินาที</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="panel p-summary">
+    <div class="card" id="risk-card" data-level="ok">
+      <span class="card-label">% ความเสี่ยง</span>
+      <b class="card-value" id="risk-value">-</b>
+      <div class="bar"><i id="risk-bar"></i></div>
+    </div>
+
+    <div class="card">
+      <span class="card-label">เวลาที่ทำงาน</span>
+      <b class="card-value" id="work-time">00:00:00</b>
+      <span class="card-note">นับเมื่อเซนเซอร์ส่งข้อมูล (วันนี้)</span>
+    </div>
+
+    <div class="card">
+      <span class="card-label">เวลาที่นิ่ง</span>
+      <b class="card-value" id="still-time">00:00:00</b>
+      <span class="card-note" id="still-share">-</span>
+    </div>
+
+    <div class="card donut-card">
+      <svg class="donut" viewBox="0 0 120 120" aria-label="สรุปสัดส่วนเวลา">
+        <g transform="rotate(-90 60 60)" fill="none" stroke-width="14">
+          <circle class="seg-track"  cx="60" cy="60" r="48"></circle>
+          <circle class="seg-active" cx="60" cy="60" r="48"></circle>
+          <circle class="seg-still"  cx="60" cy="60" r="48"></circle>
+          <circle class="seg-alert"  cx="60" cy="60" r="48"></circle>
+        </g>
+        <text x="60" y="48" class="donut-label">สรุป</text>
+        <text x="60" y="68" class="donut-value" id="donut-value">-</text>
+        <text x="60" y="82" class="donut-label">ขยับ</text>
+      </svg>
+      <ul class="legend">
+        <li><i class="dot active"></i> ขยับ <b id="lg-active">00:00:00</b></li>
+        <li><i class="dot still"></i> นิ่ง <b id="lg-still">00:00:00</b></li>
+        <li><i class="dot alert"></i> แจ้งเตือน <b id="lg-alert">00:00:00</b></li>
+      </ul>
+    </div>
+  </section>
+
+  <section class="panel p-log">
+    <div class="panel-head tabs">
+      <button class="tab active" data-tab="live">ดูผล</button>
+      <button class="tab action" id="csv-button">บันทึก CSV</button>
+      <button class="tab" data-tab="history">ย้อนหลัง</button>
+    </div>
+
+    <div class="panel-body log-body">
+      <ul id="log-live" class="log-list"></ul>
+
+      <div id="log-history" hidden>
+        <div class="history-filter">
+          <label>วันที่ <input type="date" id="history-date"></label>
+          <button id="history-all" class="link-button">ทั้งหมด</button>
+        </div>
+        <ul id="history-list" class="log-list"></ul>
+      </div>
+    </div>
+  </section>
+
+</div>
+
+<script src="mannequin.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
